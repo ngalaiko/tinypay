@@ -1,0 +1,10 @@
+[package]
+name = "tinypay"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3"
+num_cpus = "1.16"
+thiserror = "1.0"
+tokio = { version = "1.36", features = ["macros", "rt", "rt-multi-thread", "fs", "sync", "io-util"] }
