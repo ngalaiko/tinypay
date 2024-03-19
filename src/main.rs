@@ -35,7 +35,9 @@ enum RunError {
 
 async fn run<P: AsRef<std::path::Path>>(input: P) -> Result<Vec<Account>, RunError> {
     let input = input.as_ref();
-    let mut events = read_file(input).await.map_err(|error| RunError::IO(input.to_path_buf(), error))?;
+    let mut events = read_file(input)
+        .await
+        .map_err(|error| RunError::IO(input.to_path_buf(), error))?;
 
     // Initialize the number of workers to the number of logical CPUs
     let workers_count = num_cpus::get();
@@ -71,7 +73,6 @@ async fn run<P: AsRef<std::path::Path>>(input: P) -> Result<Vec<Account>, RunErr
 
     Ok(accounts)
 }
-
 
 async fn read_file<P: AsRef<std::path::Path>>(
     input: P,
@@ -122,11 +123,11 @@ async fn reduce(mut events: tokio::sync::mpsc::Receiver<Event>) -> Vec<Account> 
                 }
 
                 if account.available + transaction.amount < 0.0 {
-                    if transaction.amount < 0.0  {
+                    if transaction.amount < 0.0 {
                         // Ignore withdrawal transactions that would result in a negative available balance
                         continue;
                     } else {
-                        // Repaying debts is allowed 
+                        // Repaying debts is allowed
                     }
                 }
 
@@ -161,17 +162,17 @@ async fn reduce(mut events: tokio::sync::mpsc::Receiver<Event>) -> Vec<Account> 
                 account_disputes.remove(&resolve.transaction_id);
             }
             Event::Chargeback(chargeback) => {
-                if !account_disputes.contains(&chargeback.transaction_id) {
-                    // Chargeback for transactions that are not in dispute locks the account
-                    account.locked = true;
-                    continue;
-                }
-
                 let Some(transaction_amount) = account_transactions.get(&chargeback.transaction_id)
                 else {
                     // Ignore chargebacks for transactions that do not exist
                     continue;
                 };
+
+                if !account_disputes.contains(&chargeback.transaction_id) {
+                    // Chargeback for transactions that are not in dispute locks the account
+                    account.locked = true;
+                    continue;
+                }
 
                 account.held -= transaction_amount;
                 account.total -= transaction_amount;
