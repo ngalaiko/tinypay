@@ -108,10 +108,6 @@ async fn reduce(mut events: tokio::sync::mpsc::Receiver<Event>) -> Vec<Account> 
             .entry(client_id)
             .or_insert_with(|| Account::new(client_id));
 
-        if account.locked {
-            continue;
-        }
-
         let account_transactions = transactions.entry(client_id).or_default();
         let account_disputes = disputes.entry(client_id).or_default();
 
@@ -134,8 +130,18 @@ async fn reduce(mut events: tokio::sync::mpsc::Receiver<Event>) -> Vec<Account> 
                 account.available += transaction.amount;
                 account.total += transaction.amount;
                 account_transactions.insert(transaction.id, transaction.amount);
+
+                if account.locked && account.total > 0.0 {
+                    // Unlock the account if the total balance is positive
+                    account.locked = false;
+                }
             }
             Event::Dispute(dispute) => {
+                if account.locked {
+                    // Ignore disputes for locked accounts
+                    continue;
+                }
+
                 let Some(transaction_amount) = account_transactions.get(&dispute.transaction_id)
                 else {
                     // Ignore disputes for transactions that do not exist
@@ -169,8 +175,7 @@ async fn reduce(mut events: tokio::sync::mpsc::Receiver<Event>) -> Vec<Account> 
                 };
 
                 if !account_disputes.contains(&chargeback.transaction_id) {
-                    // Chargeback for transactions that are not in dispute locks the account
-                    account.locked = true;
+                    // Chargeback for transactions that are not in dispute are ignored
                     continue;
                 }
 
@@ -178,6 +183,11 @@ async fn reduce(mut events: tokio::sync::mpsc::Receiver<Event>) -> Vec<Account> 
                 account.total -= transaction_amount;
                 account_disputes.remove(&chargeback.transaction_id);
                 account_transactions.remove(&chargeback.transaction_id);
+
+                if account.total < 0.0 {
+                    // Lock the account if the total balance is negative
+                    account.locked = true;
+                }
             }
         }
     }
