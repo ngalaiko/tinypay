@@ -8,3 +8,11 @@ futures = "0.3"
 num_cpus = "1.16"
 thiserror = "1.0"
 tokio = { version = "1.36", features = ["macros", "rt", "rt-multi-thread", "fs", "sync", "io-util"] }
+
+[lib]
+name = "tinypay"
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "tinypay"
+path = "src/main.rs"
